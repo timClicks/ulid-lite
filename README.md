@@ -1,4 +1,4 @@
-# ulid
+# ulid-lite
 
 ## About
 
@@ -15,11 +15,89 @@ A ULID is
 - Case insensitive
 - No special characters (URL safe)
 
-## Installation
+## Usage
+
+### From the command line
+
+The bundled application generates a ULID and prints it to stdout:
+
+```console
+$ ulid
+01F5QNHN4G55VHQHA8XG1N6H9H
+```
+
+### From Rust
+
+Here is a minimal application that uses this crate:
+
+```rust
+use libc;
+use ulid_lite::ulid;
+
+fn main() {
+    unsafe {
+        let now = libc::time(0 as *mut _);
+        let now_u32 = (now & u32::MAX as i64) as u32;
+        libc::srand(now_u32);
+    }
+
+    println!("{}", ulid());
+}
 
 ```
-$ cargo install --git https://github.com/timClicks/ulid
+
+To correctly use this crate, you need to seed `libc::rand`.
+
+
+The primary API is the `ulid()` function, which returns a `String`.
+
+```rust
+ulid_lite::ulid() -> String
 ```
+
+For more control, the `ulid::Ulid` type is also available.
+
+```rust
+ulid_lite::Ulid::new() -> ulid::Ulid
+```
+
+```rust
+let id = ulid_lite::Ulid::new();
+
+
+// Ulid supports .to_string()
+let _ = id.to_string();
+
+// Display
+println!("{}", id);
+
+// Display Hex
+println!("{:x}, id);
+```
+
+
+## Installation
+
+At this early stage, this implementation is only available to people
+who can install it from source:
+
+```console
+$ cargo install --git https://github.com/timClicks/ulid-lite.git
+```
+
+
+
+
+## Roadmap
+
+### C library ("libulid"?)
+
+This implementation is designed to make it easy to add a fast
+implemention to your language. Accordingly, it'll expose
+
+### PostgreSQL extension
+
+I would like to use this crate to develop pg_ulid extension.
 
 
 ## Warning: Work in progress
@@ -34,8 +112,33 @@ A few important features are not yet implemented.
 
 ## Why add another crate?
 
-I wanted to implement a crate with a minimalist feel.
+I wanted to implement a crate with a minimalist feel. It is intended to be easy and fast to build.
+ulid-lite has minimal dependencies: its only external dependency is `libc`. 
+This keeps build times fast and binary size small.
 
-- API-compliant with the spec: `ulid::ulid()` should be sufficient.
-- minimal dependencies: this implementation's only external dependency is `libc`. 
-  That is intended to keep build times fast and build size slim.
+`ulid` does not take a long time to compile:
+
+```console
+$ cargo clean
+$ cargo build --release
+   Compiling libc v0.2.94
+   Compiling ulid v0.1.0 (/.../ulid)
+    Finished release [optimized] target(s) in 1.44s
+```
+
+## Acknowledgements
+
+I've relied on two other implementions to 
+
+<table>
+<tbody>
+  <tr>
+    <td>Dylan Hart</td>
+    <td><a href="https://github.com/dylanhart/ulid-rs">github.com/dylanhart/ulid-rs</a></td>
+  </tr>
+  <tr>
+    <td><a href="https://github.com/mmacedoeu">Marcos Macedo</a></td>
+    <td><a href="https://github.com/mmacedoeu/rulid.rs">github.com/mmacedoeu/rulid.rs</a></td>
+  </tr>
+</tbody>
+</table>
