@@ -1,9 +1,13 @@
 [package]
-name = "ulid"
+name = "ulid-lite"
 version = "0.1.0"
-description = "ULID generation"
+description = "ULID generation library and command-line utility"
 authors = ["Tim McNamara <paperless@timmcnamara.co.nz>"]
+readme = "README.md"
+homepage = "https://github.com/timClicks/ulid-lite"
+license = "BlueOak-1.0.0 OR Apache-2.0"
 edition = "2018"
+categories = ["command-line-utilities"] 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -13,3 +17,6 @@ default-features = false # avoid std
 
 [dev-dependencies]
 itertools = "0.10"
+
+[profile.release]
+lto = true

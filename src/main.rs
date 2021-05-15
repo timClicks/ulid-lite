@@ -1,5 +1,5 @@
 use libc;
-use ulid::ulid;
+use ulid_lite::ulid;
 
 fn main() {
     unsafe {
