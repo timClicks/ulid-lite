@@ -1,4 +1,4 @@
-use core::fmt::{Display, Formatter, Result};
+use core::fmt::{Display, LowerHex, UpperHex, Formatter, Result};
 use libc::{self};
 use std::time::SystemTime;
 
@@ -107,6 +107,18 @@ impl Display for Ulid {
         //         bytes that are present.
         let ascii_ulid = unsafe { core::str::from_utf8_unchecked(&buf) };
         write!(f, "{}", ascii_ulid)
+    }
+}
+
+impl LowerHex for Ulid {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        LowerHex::fmt(&self.bits, f)
+    }
+}
+
+impl UpperHex for Ulid {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        UpperHex::fmt(&self.bits, f)
     }
 }
 
