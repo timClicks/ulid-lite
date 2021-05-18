@@ -133,7 +133,7 @@ I've relied on two other implementions to
 <table>
 <tbody>
   <tr>
-    <td>Dylan Hart</td>
+    <td><a href="http://dylanh.art/">Dylan Hart</a></td>
     <td><a href="https://github.com/dylanhart/ulid-rs">github.com/dylanhart/ulid-rs</a></td>
   </tr>
   <tr>
