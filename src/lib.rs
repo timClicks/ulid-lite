@@ -81,7 +81,7 @@ fn rand_bits() -> u128 {
     bits
 }
 
-#[derive(Clone, Copy, PartialOrd, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Hash)]
 pub struct Ulid {
     bits: u128,
 }
