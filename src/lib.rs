@@ -1,4 +1,4 @@
-use core::fmt::{Display, LowerHex, UpperHex, Formatter, Result};
+use core::fmt::{Display, Formatter, LowerHex, Result, UpperHex};
 use libc::{self};
 use std::time::SystemTime;
 
@@ -137,7 +137,7 @@ mod that {
     #[test]
     fn each_ulid_is_unique() {
         use itertools::Itertools;
-    
+
         let ulids: Vec<_> = (0..100).map(|_| ulid()).collect();
         for pair in ulids.into_iter().permutations(2) {
             assert_ne!(pair[0], pair[1]);
