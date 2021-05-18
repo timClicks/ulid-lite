@@ -2,7 +2,7 @@
 
 ## About
 
-An implementation of the ULID ("Universally Unique Lexicographically Sortable Identifier")
+An implementation of the [ULID] ("Universally Unique Lexicographically Sortable Identifier")
 standard.
 
 A ULID is
@@ -14,6 +14,8 @@ A ULID is
 - Uses Crockford's base32 for better efficiency and readability (5 bits per character)
 - Case insensitive
 - No special characters (URL safe)
+
+[ULID]: https://github.com/ulid/spec
 
 ## Usage
 
@@ -48,7 +50,6 @@ fn main() {
 
 To correctly use this crate, you need to seed `libc::rand`.
 
-
 The primary API is the `ulid()` function, which returns a `String`.
 
 ```rust
@@ -61,19 +62,32 @@ For more control, the `ulid::Ulid` type is also available.
 ulid_lite::Ulid::new() -> ulid::Ulid
 ```
 
+The `Ulid` struct is a wrapper around a `u128`, with a few extra methods.
+
 ```rust
 let id = ulid_lite::Ulid::new();
 
+// Ulid structs can be converted to strings..
+let _: String = id.to_string();
 
-// Ulid supports .to_string()
-let _ = id.to_string();
-
-// Display
+// They implmement Display, LowerHex and UpperHex
 println!("{}", id);
-
-// Display Hex
-println!("{:x}, id);
+println!("{:x}", id);
+println!("{:X}", id);
 ```
+
+More recent ULIDs are higher than older ones:
+
+```rust
+use std::thread::sleep;
+use std::time::Duration;
+
+let a = ulid();
+sleep(Duration::from_millis(1));
+let b = ulid();
+assert!(a < b);
+```
+
 
 
 ## Installation
@@ -128,7 +142,7 @@ $ cargo build --release
 
 ## Acknowledgements
 
-I've relied on two other implementions to 
+I've relied on two other implementations to develop `ulid-lite`:
 
 <table>
 <tbody>
