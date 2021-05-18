@@ -130,23 +130,28 @@ pub fn ulid_raw() -> u128 {
     Ulid::new().bits
 }
 
-#[test]
-fn test_each_ulid_is_unique() {
-    use itertools::Itertools;
+#[cfg(test)]
+mod that {
+    use super::*;
 
-    let ulids: Vec<_> = (0..100).map(|_| ulid()).collect();
-    for pair in ulids.into_iter().permutations(2) {
-        assert_ne!(pair[0], pair[1]);
+    #[test]
+    fn each_ulid_is_unique() {
+        use itertools::Itertools;
+    
+        let ulids: Vec<_> = (0..100).map(|_| ulid()).collect();
+        for pair in ulids.into_iter().permutations(2) {
+            assert_ne!(pair[0], pair[1]);
+        }
     }
-}
 
-#[test]
-fn test_newer_ulids_are_higher() {
-    use std::thread::sleep;
-    use std::time::Duration;
+    #[test]
+    fn newer_ulids_are_higher() {
+        use std::thread::sleep;
+        use std::time::Duration;
 
-    let a = ulid();
-    sleep(Duration::from_millis(2));
-    let b = ulid();
-    assert!(a < b);
+        let a = ulid();
+        sleep(Duration::from_millis(2));
+        let b = ulid();
+        assert!(a < b);
+    }
 }
