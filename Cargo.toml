@@ -17,6 +17,12 @@ default-features = false # avoid std
 
 [dev-dependencies]
 itertools = "0.10"
+bencher = "0.1"
 
 [profile.release]
 lto = true
+
+[[bench]]
+name = "bench"
+path = "benchmarking/bench.rs"
+harness = false
