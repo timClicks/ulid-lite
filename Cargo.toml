@@ -21,8 +21,6 @@ bencher = "0.1"
 
 [profile.release]
 lto = true
-opt-level = "s"
-panic = "abort"
 
 [[bench]]
 name = "bench"
