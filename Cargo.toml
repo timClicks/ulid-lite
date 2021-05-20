@@ -21,8 +21,16 @@ bencher = "0.1"
 
 [profile.release]
 lto = true
+opt-level = "s"
+panic = "abort"
 
 [[bench]]
 name = "bench"
 path = "benchmarking/bench.rs"
 harness = false
+
+[[bin]]
+name = "ulid"
+test = false
+bench = false
+path = "src/main.rs"
