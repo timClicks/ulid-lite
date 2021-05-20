@@ -1,11 +1,12 @@
 use core::fmt::{Display, Formatter, LowerHex, Result, UpperHex};
 use libc::{self};
-use std::time::SystemTime;
+use std::{slice::from_raw_parts_mut, time::SystemTime};
+use std::os::raw::c_char;
 
+const ULID_LEN: usize = 26;
 mod base32 {
+    use super::ULID_LEN;
     use core::hint::unreachable_unchecked;
-
-    const ULID_LEN: usize = 26;
 
     #[inline]
     fn lookup(b: u8) -> u8 {
@@ -146,12 +147,70 @@ pub fn init() {
     }
 }
 
+pub type UlidArray = [u8; 16];
+
+impl From<Ulid> for UlidArray {
+    #[inline]
+    fn from(id: Ulid) -> Self {
+        unsafe {
+            std::mem::transmute(id.bits)
+        }
+    }
+}
+
 pub fn ulid() -> String {
     Ulid::new().to_string()
 }
 
 pub fn ulid_raw() -> u128 {
     Ulid::new().bits
+}
+
+/// Initialize the random number generator from the system's clock
+#[no_mangle]
+pub unsafe extern "C" fn ulid_init() {
+    init();
+}
+
+/// Seed the random number generator with `s`
+#[no_mangle]
+pub unsafe extern "C" fn ulid_seed(s: u32) {
+    seed(s);
+}
+
+/// Create a new ULID
+///
+/// Note: Callers should ensure that `ulid_init()` or `ulid_seed()`
+///       has been called before this function.
+#[no_mangle]
+pub unsafe extern "C" fn ulid_new() -> *mut UlidArray {
+    &mut Ulid::new().into() as &mut _
+}
+
+/// Create a new ULID and encodes it as a Crockford Base32 string.
+///
+/// Note: Callers should ensure that `ulid_init()` or `ulid_seed()`
+///       has been called before this function.
+///
+/// Note: This function allocates memory. Callers are required to free
+///       the return value when is no longer useful.
+#[no_mangle]
+pub unsafe extern "C" fn ulid_new_string() -> *mut c_char {
+    let ptr = Ulid::new().to_string().as_ptr();
+    std::mem::transmute(ptr) // legal because of the base32 alphabet
+}
+
+/// Create a new ULID and write it to `buf`. 
+///
+/// Note: Callers should ensure that `ulid_init()` or `ulid_seed()`
+/// has been called before this function.
+///
+/// Warning: callers must ensure that `buf` is (at least) 26 bytes.
+#[no_mangle]
+pub unsafe extern "C" fn ulid_write_new(buf: &mut c_char) {
+    let id = Ulid::new();
+    let slice = from_raw_parts_mut(buf, ULID_LEN);
+    base32::encode(id.bits, std::mem::transmute(slice));
 }
 
 #[cfg(test)]
