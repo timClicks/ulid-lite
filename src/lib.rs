@@ -81,6 +81,7 @@ fn rand_bits() -> u128 {
     bits
 }
 
+#[repr(C)]
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Hash)]
 pub struct Ulid {
     bits: u128,
@@ -119,6 +120,29 @@ impl LowerHex for Ulid {
 impl UpperHex for Ulid {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         UpperHex::fmt(&self.bits, f)
+    }
+}
+
+/// Sets the seed of the internal random number generator.
+///
+/// This function is provided so that you can retain
+/// full control. Most applications will prefer to
+/// call `init()`.
+pub fn seed(s: u32) {
+    // Safety: safe because no memory is being passed to libc
+    unsafe {
+        libc::srand(s);
+    }
+}
+
+/// Initialize the internal random number generator
+/// based on the system's clock.
+pub fn init() {
+    const SAFE_BITS:i64 = u32::MAX as i64;
+    // Safety: safe because no memory is being passed to libc
+    unsafe {
+        let now = libc::time(0 as *mut _) & SAFE_BITS;
+        seed(now as u32);
     }
 }
 

@@ -1,6 +1,6 @@
 [package]
 name = "ulid-lite"
-version = "0.1.1"
+version = "0.2.0"
 description = "ULID generation library and command-line utility"
 authors = ["Tim McNamara <paperless@timmcnamara.co.nz>"]
 readme = "README.md"
@@ -21,6 +21,10 @@ bencher = "0.1"
 
 [profile.release]
 lto = true
+
+[lib]
+name = "ulid"
+crate-type = ["lib", "cdylib"]
 
 [[bench]]
 name = "bench"
