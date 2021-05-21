@@ -183,8 +183,9 @@ pub unsafe extern "C" fn ulid_seed(s: u32) {
 /// Note: Callers should ensure that `ulid_init()` or `ulid_seed()`
 ///       has been called before this function.
 #[no_mangle]
-pub unsafe extern "C" fn ulid_new() -> *mut UlidArray {
-    &mut Ulid::new().into() as &mut _
+pub unsafe extern "C" fn ulid_new() -> Box<UlidArray> {
+    let id: UlidArray = Ulid::new().into();
+    Box::new(id)
 }
 
 /// Create a new ULID and encodes it as a Crockford Base32 string.
@@ -196,7 +197,7 @@ pub unsafe extern "C" fn ulid_new() -> *mut UlidArray {
 ///       the return value when is no longer useful.
 #[no_mangle]
 pub unsafe extern "C" fn ulid_new_string() -> *mut c_char {
-    let ptr = Ulid::new().to_string().as_ptr();
+    let ptr = Ulid::new().to_string().as_mut_ptr();
     std::mem::transmute(ptr) // legal because of the base32 alphabet
 }
 
