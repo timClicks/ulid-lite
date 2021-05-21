@@ -197,7 +197,9 @@ pub unsafe extern "C" fn ulid_new() -> Box<UlidArray> {
 ///       the return value when is no longer useful.
 #[no_mangle]
 pub unsafe extern "C" fn ulid_new_string() -> *mut c_char {
-    let ptr = Ulid::new().to_string().as_mut_ptr();
+    let mut id = Ulid::new().to_string();
+    id.push_str("\0");
+    let ptr = id.as_mut_ptr();
     std::mem::transmute(ptr) // legal because of the base32 alphabet
 }
 
