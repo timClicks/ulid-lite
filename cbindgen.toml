@@ -1,0 +1,6 @@
+language = "c"
+
+[defines]
+
+[parse.expand]
+features = ["ffi"]
