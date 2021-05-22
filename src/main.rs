@@ -1,7 +1,7 @@
 use ulid::{init, ulid};
 
 fn main() {
-    init();
+    let _seed = init();
 
     println!("{}", ulid());
 }

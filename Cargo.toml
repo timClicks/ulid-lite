@@ -1,6 +1,6 @@
 [package]
 name = "ulid-lite"
-version = "0.2.0"
+version = "0.3.0"
 description = "ULID generation library and command-line utility"
 authors = ["Tim McNamara <paperless@timmcnamara.co.nz>"]
 readme = "README.md"
@@ -21,6 +21,9 @@ bencher = "0.1"
 
 [profile.release]
 lto = true
+
+[features]
+ffi = []
 
 [lib]
 name = "ulid"

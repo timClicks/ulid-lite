@@ -3,36 +3,33 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-typedef uint8_t UlidArray[16];
+typedef struct ulid_ctx {
+  uint32_t seed;
+} ulid_ctx;
+
+typedef uint8_t ulid_t[16];
 
 /**
- * Initialize the random number generator from the system's clock
- */
-void ulid_init(void);
-
-/**
- * Seed the random number generator with `s`
- */
-void ulid_seed(uint32_t s);
-
-/**
- * Create a new ULID
+ * Generate a `ulid_ctx` and seed the random number generator (RNG)
+ * provided by your system's libc implementation of the rand() family.
  *
- * Note: Callers should ensure that `ulid_init()` or `ulid_seed()`
- *       has been called before this function.
+ * Passing 0 as `seed` will seed the random number generator from the
+ * system's clock.
  */
-UlidArray *ulid_new(void);
+struct ulid_ctx ulid_init(uint32_t seed);
 
 /**
- * Create a new ULID and encodes it as a Crockford Base32 string.
- *
- * Note: Callers should ensure that `ulid_init()` or `ulid_seed()`
- *       has been called before this function.
- *
- * Note: This function allocates memory. Callers are required to free
- *       the return value when is no longer useful.
+ * Create a new ULID.
  */
-char *ulid_new_string(void);
+ulid_t *ulid_new(struct ulid_ctx *ctx);
+
+/**
+ * Create a new ULID and encodes it as a NULL-terminated string
+ * encoded in Crockford's Base32 alphabet.
+ *
+ * Note: This function incurs a memory allocation.
+ */
+char *ulid_new_string(struct ulid_ctx *ctx);
 
 /**
  * Create a new ULID and write it to `buf`.
@@ -43,3 +40,10 @@ char *ulid_new_string(void);
  * Warning: callers must ensure that `buf` is (at least) 26 bytes.
  */
 void ulid_write_new(char *buf);
+
+/**
+ * Encode 128 bit ULID as a string.
+ *
+ * Note: callers should ensure that `dest` contains 27 bytes, e.g. 26 + NUL.
+ */
+void ulid_encode(ulid_t *id, char *dest);

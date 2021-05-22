@@ -1,7 +1,6 @@
 use core::fmt::{Display, Formatter, LowerHex, Result, UpperHex};
 use libc::{self};
-use std::{slice::from_raw_parts_mut, time::SystemTime};
-use std::os::raw::c_char;
+use std::{time::SystemTime};
 
 const ULID_LEN: usize = 26;
 mod base32 {
@@ -138,23 +137,13 @@ pub fn seed(s: u32) {
 
 /// Initialize the internal random number generator
 /// based on the system's clock.
-pub fn init() {
+pub fn init() -> u32 {
     const SAFE_BITS:i64 = u32::MAX as i64;
     // Safety: safe because no memory is being passed to libc
     unsafe {
         let now = libc::time(0 as *mut _) & SAFE_BITS;
         seed(now as u32);
-    }
-}
-
-pub type UlidArray = [u8; 16];
-
-impl From<Ulid> for UlidArray {
-    #[inline]
-    fn from(id: Ulid) -> Self {
-        unsafe {
-            std::mem::transmute(id.bits)
-        }
+        now as u32
     }
 }
 
@@ -166,54 +155,115 @@ pub fn ulid_raw() -> u128 {
     Ulid::new().bits
 }
 
-/// Initialize the random number generator from the system's clock
-#[no_mangle]
-pub unsafe extern "C" fn ulid_init() {
-    init();
-}
+//#[cfg(ffi)]
+mod ffi {
+    use super::*;
+    use std::os::raw::c_char;
+    use std::slice::from_raw_parts_mut;
 
-/// Seed the random number generator with `s`
-#[no_mangle]
-pub unsafe extern "C" fn ulid_seed(s: u32) {
-    seed(s);
-}
+    #[allow(non_camel_case_types)]
+    pub type ulid_t = [u8; 16];
 
-/// Create a new ULID
-///
-/// Note: Callers should ensure that `ulid_init()` or `ulid_seed()`
-///       has been called before this function.
-#[no_mangle]
-pub unsafe extern "C" fn ulid_new() -> Box<UlidArray> {
-    let id: UlidArray = Ulid::new().into();
-    Box::new(id)
-}
+    impl From<Ulid> for ulid_t {
+        #[inline]
+        fn from(id: Ulid) -> Self {
+            unsafe {
+                std::mem::transmute(id.bits)
+            }
+        }
+    }
 
-/// Create a new ULID and encodes it as a Crockford Base32 string.
-///
-/// Note: Callers should ensure that `ulid_init()` or `ulid_seed()`
-///       has been called before this function.
-///
-/// Note: This function allocates memory. Callers are required to free
-///       the return value when is no longer useful.
-#[no_mangle]
-pub unsafe extern "C" fn ulid_new_string() -> *mut c_char {
-    let mut id = Ulid::new().to_string();
-    id.push_str("\0");
-    let ptr = id.as_mut_ptr();
-    std::mem::transmute(ptr) // legal because of the base32 alphabet
-}
+    #[repr(C)]
+    #[allow(non_camel_case_types)]
+    pub struct ulid_ctx {
+        seed: u32,
+    }
 
-/// Create a new ULID and write it to `buf`. 
-///
-/// Note: Callers should ensure that `ulid_init()` or `ulid_seed()`
-/// has been called before this function.
-///
-/// Warning: callers must ensure that `buf` is (at least) 26 bytes.
-#[no_mangle]
-pub unsafe extern "C" fn ulid_write_new(buf: &mut c_char) {
-    let id = Ulid::new();
-    let slice = from_raw_parts_mut(buf, ULID_LEN);
-    base32::encode(id.bits, std::mem::transmute(slice));
+    impl ulid_ctx {
+        #[inline]
+        fn ensure_init(&mut self) {
+            if (self as *mut ulid_ctx).is_null() {
+                ulid_init(0);
+            } else if self.seed == 0 {
+                self.seed = ulid_init(0).seed;
+            }
+        }
+    }
+
+    /// Generate a `ulid_ctx` and seed the random number generator (RNG)
+    /// provided by your system's libc implementation of the rand() family.
+    ///
+    /// Passing 0 as `seed` will seed the random number generator from the
+    /// system's clock.
+    #[no_mangle]
+    pub extern "C" fn ulid_init(seed: u32) -> ulid_ctx {
+        let s = match seed {
+            0 => init(),
+            s => { super::seed(s); s},
+        };
+
+        ulid_ctx {
+            seed: s,
+        }
+    }
+
+    // /// Seed the random number generator with `s`
+    // #[no_mangle]
+    // pub unsafe extern "C" fn ulid_seed(s: u32) {
+    //     seed(s);
+    // }
+
+    /// Create a new ULID.
+    #[no_mangle]
+    pub unsafe extern "C" fn ulid_new(ctx: &mut ulid_ctx) -> Box<ulid_t> {
+        ctx.ensure_init();
+
+        let id: ulid_t = Ulid::new().into();
+        Box::new(id)
+    }
+
+    // TODO: check that this is would actually free the boxed value
+    //
+    // /// Free a ULID created with `ulid_new()`
+    // #[no_mangle]
+    // pub unsafe extern "C" fn ulid_free(_: Box<ulid_t>) {
+    // }
+
+    /// Create a new ULID and encodes it as a NULL-terminated string
+    /// encoded in Crockford's Base32 alphabet.
+    ///
+    /// Note: This function incurs a memory allocation.
+    #[no_mangle]
+    pub unsafe extern "C" fn ulid_new_string(ctx: &mut ulid_ctx) -> *mut c_char {
+        ctx.ensure_init();
+
+        let mut id = Ulid::new().to_string();
+        id.push_str("\0");
+        let ptr = id.as_mut_ptr();
+        std::mem::transmute(ptr) // legal because of the base32 alphabet
+    }
+
+    /// Create a new ULID and write it to `buf`.
+    ///
+    /// Note: Callers should ensure that `ulid_init()` or `ulid_seed()`
+    /// has been called before this function.
+    ///
+    /// Warning: callers must ensure that `buf` is (at least) 26 bytes.
+    #[no_mangle]
+    pub unsafe extern "C" fn ulid_write_new(buf: &mut c_char) {
+        let id = Ulid::new();
+        let slice = from_raw_parts_mut(buf, ULID_LEN);
+        base32::encode(id.bits, std::mem::transmute(slice));
+    }
+
+    /// Encode 128 bit ULID as a string.
+    ///
+    /// Note: callers should ensure that `dest` contains 27 bytes, e.g. 26 + NUL.
+    #[no_mangle]
+    pub unsafe extern "C" fn ulid_encode(id: &mut ulid_t, dest: &mut c_char) {
+        let slice = from_raw_parts_mut(dest, ULID_LEN);
+        base32::encode(std::mem::transmute(*id), std::mem::transmute(slice));
+    }
 }
 
 #[cfg(test)]
