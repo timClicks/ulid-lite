@@ -24,6 +24,11 @@ struct ulid_ctx ulid_init(uint32_t seed);
 ulid_t *ulid_new(struct ulid_ctx *ctx);
 
 /**
+ * Free a ULID created with `ulid_new()`
+ */
+void ulid_delete(ulid_t*);
+
+/**
  * Create a new ULID and encodes it as a NULL-terminated string
  * encoded in Crockford's Base32 alphabet.
  *

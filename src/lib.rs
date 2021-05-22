@@ -222,12 +222,10 @@ mod ffi {
         Box::new(id)
     }
 
-    // TODO: check that this is would actually free the boxed value
-    //
-    // /// Free a ULID created with `ulid_new()`
-    // #[no_mangle]
-    // pub unsafe extern "C" fn ulid_free(_: Box<ulid_t>) {
-    // }
+    /// Delete a ULID created with `ulid_new()`
+    #[no_mangle]
+    pub unsafe extern "C" fn ulid_delete(_: Option<Box<ulid_t>>) {
+    }
 
     /// Create a new ULID and encodes it as a NULL-terminated string
     /// encoded in Crockford's Base32 alphabet.
