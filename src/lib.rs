@@ -1,6 +1,5 @@
 use core::fmt::{Display, Formatter, LowerHex, Result, UpperHex};
-use libc::{self};
-use std::{time::SystemTime};
+use std::time::SystemTime;
 
 const ULID_LEN: usize = 26;
 mod base32 {
@@ -158,7 +157,6 @@ pub fn ulid_raw() -> u128 {
 //#[cfg(ffi)]
 mod ffi {
     use super::*;
-    use std::mem::ManuallyDrop;
     use std::os::raw::c_char;
     use std::slice::from_raw_parts_mut;
 
@@ -182,11 +180,11 @@ mod ffi {
 
     impl ulid_ctx {
         #[inline]
-        fn ensure_init(&mut self) {
-            if (self as *mut ulid_ctx).is_null() {
+        unsafe fn ensure_init(ctx: *mut ulid_ctx) {
+            if ctx.is_null() {
                 ulid_init(0);
-            } else if self.seed == 0 {
-                self.seed = ulid_init(0).seed;
+            } else if (*ctx).seed == 0 {
+                (*ctx).seed = ulid_init(0).seed;
             }
         }
     }
@@ -214,52 +212,48 @@ mod ffi {
     //     seed(s);
     // }
 
-    /// Create a new ULID.
+    /// Write a new 128-bit ULID in `dest`.
+    ///
+    /// If `ctx` pointer is null, the random number generator is re-seeded from
+    /// the system's clock.
+    ///
+    /// The destination pointer `dest` must be a valid, non-null, pointer to
+    /// `ulid_t`.
     #[no_mangle]
-    pub unsafe extern "C" fn ulid_new(ctx: &mut ulid_ctx) -> Box<ulid_t> {
-        ctx.ensure_init();
+    pub unsafe extern "C" fn ulid_new(ctx: *mut ulid_ctx, dest: &mut ulid_t) {
+        ulid_ctx::ensure_init(ctx);
 
         let id: ulid_t = Ulid::new().into();
-        Box::new(id)
+        *dest = std::mem::transmute(id);
     }
 
-    /// Delete a ULID created with `ulid_new()`
-    #[no_mangle]
-    pub unsafe extern "C" fn ulid_delete(_: Option<Box<ulid_t>>) {
-    }
-
-    /// Create a new ULID and encodes it as a NULL-terminated string
-    /// encoded in Crockford's Base32 alphabet.
+    /// Write a new ULID in `dest` using Crockford's Base32 alphabet.
     ///
-    /// Note: This function incurs a memory allocation.
-    #[no_mangle]
-    pub unsafe extern "C" fn ulid_new_string(ctx: &mut ulid_ctx) -> *mut c_char {
-        ctx.ensure_init();
-
-        let mut id = ManuallyDrop::new(Ulid::new().to_string());
-        id.push_str("\0");
-        let ptr = id.as_mut_ptr();
-        std::mem::transmute(ptr) // legal because of the base32 alphabet
-    }
-
-    /// Create a new ULID and write it to `buf`.
+    /// If `ctx` pointer is null, the random number generator is re-seeded from
+    /// the system's clock.
     ///
-    /// Note: Callers should ensure that `ulid_init()` or `ulid_seed()`
-    /// has been called before this function.
+    /// The destination pointer `dest` must be a valid, non-null, pointer to
+    /// `char` buffer with at least length 26.
     ///
-    /// Warning: callers must ensure that `buf` is (at least) 26 bytes.
+    /// No terminating null byte is written to the buffer.
     #[no_mangle]
-    pub unsafe extern "C" fn ulid_write_new(buf: &mut c_char) {
+    pub unsafe extern "C" fn ulid_new_string(ctx: *mut ulid_ctx, dest: *mut c_char) {
+        ulid_ctx::ensure_init(ctx);
+
         let id = Ulid::new();
-        let slice = from_raw_parts_mut(buf, ULID_LEN);
+        let slice = from_raw_parts_mut(dest, ULID_LEN);
         base32::encode(id.bits, std::mem::transmute(slice));
     }
 
-    /// Encode 128 bit ULID as a string.
+    /// Encode the 128-bit ULID pointed by `id` as a string in `dest`.
     ///
-    /// Note: callers should ensure that `dest` contains 27 bytes, e.g. 26 + NUL.
+    /// The destination pointer `dest` must be a valid, non-null, pointer to
+    /// `char` buffer with at least length 26.
+    ///
+    /// The Crockford's Base32 alphabet is used.  No terminating null byte is
+    /// written to the buffer.
     #[no_mangle]
-    pub unsafe extern "C" fn ulid_encode(id: &mut ulid_t, dest: &mut c_char) {
+    pub unsafe extern "C" fn ulid_encode(id: &ulid_t, dest: *mut c_char) {
         let slice = from_raw_parts_mut(dest, ULID_LEN);
         base32::encode(std::mem::transmute(*id), std::mem::transmute(slice));
     }
@@ -270,6 +264,7 @@ mod that {
     use super::*;
 
     #[test]
+    #[cfg_attr(miri, ignore)]  // too slow and unlikely to pass in Miri
     fn each_ulid_is_unique() {
         use itertools::Itertools;
 
@@ -288,5 +283,71 @@ mod that {
         sleep(Duration::from_millis(2));
         let b = ulid();
         assert!(a < b);
+    }
+
+    //#[cfg(ffi)]
+    mod ffi {
+        use std::{ffi::CStr, os::raw::c_char};
+
+        use crate::*;
+
+        #[test]
+        fn smoke_test_init() {
+            let ctx = ffi::ulid_init(42);
+
+            let as_u32: u32 = unsafe { std::mem::transmute(ctx) };
+            assert_eq!(as_u32, 42);
+        }
+
+        #[test]
+        fn smoke_test_new() {
+            let mut dest = [0u8; 16];
+
+            unsafe { ffi::ulid_new(std::ptr::null_mut(), &mut dest) };
+            assert_ne!(dest, [0u8; 16]); // should be impossible after 1-1-1970
+        }
+
+        #[test]
+        fn smoke_test_new_string() {
+            let mut dest = [0u8; ULID_LEN + 1];
+
+            unsafe { ffi::ulid_new_string(std::ptr::null_mut(), dest.as_mut_ptr() as *mut c_char) };
+
+            let reconst = CStr::from_bytes_with_nul(&dest).unwrap().to_str().unwrap();
+            assert_eq!(reconst.len(), 26);
+        }
+
+        #[test]
+        fn smoke_test_encode() {
+            let mut id = [0u8; 16];
+            unsafe { ffi::ulid_new(std::ptr::null_mut(), &mut id) };
+
+            let mut dest = [0u8; ULID_LEN + 1];
+            unsafe { ffi::ulid_encode(&id, dest.as_mut_ptr() as *mut c_char) };
+
+            let reconst = CStr::from_bytes_with_nul(&dest).unwrap().to_str().unwrap();
+            assert_eq!(reconst.len(), 26);
+        }
+    }
+}
+
+/// Mock some libc functions for the tests to run on Miri
+///
+/// Note: MIRIFLAGS="-Zmiri-disable-isolation" is needed for `SystemTime::now()`.
+#[cfg(miri)]
+mod libc {
+    use std::os::raw::{c_int, c_uint};
+
+    #[allow(non_camel_case_types)]
+    type time_t = i64;
+
+    pub unsafe fn rand() -> c_int {
+        42
+    }
+
+    pub unsafe fn srand(_: c_uint) {}
+
+    pub unsafe fn time(_: *mut time_t) -> time_t {
+        42
     }
 }
