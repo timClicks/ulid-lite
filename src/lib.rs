@@ -158,6 +158,7 @@ pub fn ulid_raw() -> u128 {
 //#[cfg(ffi)]
 mod ffi {
     use super::*;
+    use std::mem::ManuallyDrop;
     use std::os::raw::c_char;
     use std::slice::from_raw_parts_mut;
 
@@ -235,7 +236,7 @@ mod ffi {
     pub unsafe extern "C" fn ulid_new_string(ctx: &mut ulid_ctx) -> *mut c_char {
         ctx.ensure_init();
 
-        let mut id = Ulid::new().to_string();
+        let mut id = ManuallyDrop::new(Ulid::new().to_string());
         id.push_str("\0");
         let ptr = id.as_mut_ptr();
         std::mem::transmute(ptr) // legal because of the base32 alphabet
