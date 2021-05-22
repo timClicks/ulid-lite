@@ -19,36 +19,36 @@ typedef uint8_t ulid_t[16];
 struct ulid_ctx ulid_init(uint32_t seed);
 
 /**
- * Create a new ULID.
+ * Write a new 128-bit ULID in `dest`.
+ *
+ * If `ctx` pointer is null, the random number generator is re-seeded from
+ * the system's clock.
+ *
+ * The destination pointer `dest` must be a valid, non-null, pointer to
+ * `ulid_t`.
  */
-ulid_t *ulid_new(struct ulid_ctx *ctx);
+void ulid_new(struct ulid_ctx *ctx, ulid_t *dest);
 
 /**
- * Free a ULID created with `ulid_new()`
+ * Write a new ULID in `dest` using Crockford's Base32 alphabet.
+ *
+ * If `ctx` pointer is null, the random number generator is re-seeded from
+ * the system's clock.
+ *
+ * The destination pointer `dest` must be a valid, non-null, pointer to
+ * `char` buffer with at least length 26.
+ *
+ * No terminating null byte is written to the buffer.
  */
-void ulid_delete(ulid_t*);
+void ulid_new_string(struct ulid_ctx *ctx, char *dest);
 
 /**
- * Create a new ULID and encodes it as a NULL-terminated string
- * encoded in Crockford's Base32 alphabet.
+ * Encode the 128-bit ULID pointed by `id` as a string in `dest`.
  *
- * Note: This function incurs a memory allocation.
+ * The destination pointer `dest` must be a valid, non-null, pointer to
+ * `char` buffer with at least length 26.
+ *
+ * The Crockford's Base32 alphabet is used.  No terminating null byte is
+ * written to the buffer.
  */
-char *ulid_new_string(struct ulid_ctx *ctx);
-
-/**
- * Create a new ULID and write it to `buf`.
- *
- * Note: Callers should ensure that `ulid_init()` or `ulid_seed()`
- * has been called before this function.
- *
- * Warning: callers must ensure that `buf` is (at least) 26 bytes.
- */
-void ulid_write_new(char *buf);
-
-/**
- * Encode 128 bit ULID as a string.
- *
- * Note: callers should ensure that `dest` contains 27 bytes, e.g. 26 + NUL.
- */
-void ulid_encode(ulid_t *id, char *dest);
+void ulid_encode(const ulid_t *id, char *dest);
