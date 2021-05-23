@@ -140,11 +140,6 @@ $ cargo install --git https://github.com/timClicks/ulid-lite.git
 
 ## Roadmap
 
-### C library ("libulid"?)
-
-This implementation is designed to make it easy to add a fast
-implemention to your language. Accordingly, it'll expose
-
 ### PostgreSQL extension
 
 I would like to use this crate to develop pg_ulid extension.
