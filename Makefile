@@ -12,7 +12,9 @@ test: lib/ulid.h
 test: target/release/libulid.rlib
 test: target/release/libulid.so
 test: target/release/ulid
-	cargo test
+	# tests are serialized until #8 is resolved
+	cargo test -- --test-threads=1
+	# isolation is disabled to access the system clock
 	MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test
 
 clean:
