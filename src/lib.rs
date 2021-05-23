@@ -294,9 +294,12 @@ mod that {
         #[test]
         fn can_init_ctx() {
             let ctx = ffi::ulid_init(42);
-
             let as_u32: u32 = unsafe { std::mem::transmute(ctx) };
             assert_eq!(as_u32, 42);
+
+            let ctx = ffi::ulid_init(0);
+            let as_u32: u32 = unsafe { std::mem::transmute(ctx) };
+            assert_ne!(as_u32, 0);
         }
 
         #[test]
