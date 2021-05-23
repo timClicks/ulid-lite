@@ -292,7 +292,7 @@ mod that {
         use crate::*;
 
         #[test]
-        fn smoke_test_init() {
+        fn can_init_ctx() {
             let ctx = ffi::ulid_init(42);
 
             let as_u32: u32 = unsafe { std::mem::transmute(ctx) };
@@ -300,7 +300,7 @@ mod that {
         }
 
         #[test]
-        fn smoke_test_new() {
+        fn can_create_new_ulid() {
             let mut dest = [0u8; 16];
 
             unsafe { ffi::ulid_new(std::ptr::null_mut(), &mut dest) };
@@ -308,7 +308,7 @@ mod that {
         }
 
         #[test]
-        fn smoke_test_new_string() {
+        fn can_create_new_ulid_as_base32() {
             let mut dest = [0u8; ULID_LEN + 1];
 
             unsafe { ffi::ulid_new_string(std::ptr::null_mut(), dest.as_mut_ptr() as *mut c_char) };
@@ -318,7 +318,7 @@ mod that {
         }
 
         #[test]
-        fn smoke_test_encode() {
+        fn can_encode_binary_ulid_as_base32() {
             let mut id = [0u8; 16];
             unsafe { ffi::ulid_new(std::ptr::null_mut(), &mut id) };
 
