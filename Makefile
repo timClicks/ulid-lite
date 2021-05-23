@@ -1,4 +1,4 @@
-.PHONY: all clean install
+.PHONY: all clean test install
 all: target/release/libulid.rlib
 all: target/release/libulid.so
 all: target/release/ulid
@@ -7,6 +7,13 @@ all: lib/ulid.h
 
 install:
 	cargo install --path=.
+
+test: lib/ulid.h
+test: target/release/libulid.rlib
+test: target/release/libulid.so
+test: target/release/ulid
+	cargo test
+	MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test
 
 clean:
 	cargo clean
