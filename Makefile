@@ -1,4 +1,4 @@
-.PHONY: all clean test install
+.PHONY: all bench clean test install
 all: target/release/libulid.rlib
 all: target/release/libulid.so
 all: target/release/ulid
@@ -16,6 +16,9 @@ test: target/release/ulid
 	cargo test -- --test-threads=1
 	# isolation is disabled to access the system clock
 	MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test
+
+bench:
+	cargo bench
 
 clean:
 	cargo clean

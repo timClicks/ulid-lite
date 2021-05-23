@@ -1,12 +1,12 @@
 use bencher::{benchmark_group, benchmark_main, Bencher};
-use ulid_lite;
+use ulid;
 
 fn benchmark_serialized(b: &mut Bencher) {
-    b.iter(|| ulid_lite::ulid() )
+    b.iter(|| ulid::ulid() )
 }
 
 fn benchmark_generation(b: &mut Bencher) {
-    b.iter(|| ulid_lite::Ulid::new() )
+    b.iter(|| ulid::Ulid::new() )
 }
 
 benchmark_group!(
