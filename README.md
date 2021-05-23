@@ -42,24 +42,24 @@ fn main() {
 }
 ```
 
-To correctly use this crate, you need to seed `libc::rand`.
+To correctly use this crate, you need to ensure that `ulid::init()` has been called. This seeds the (pseudo-)random number generator provided by your system's `libc::rand` library.
 
 The primary API is the `ulid()` function, which returns a `String`.
 
 ```rust
-ulid_lite::ulid() -> String
+ulid::ulid() -> String
 ```
 
 For more control, the `ulid::Ulid` type is also available.
 
 ```rust
-ulid_lite::Ulid::new() -> ulid::Ulid
+ulid::Ulid::new() -> ulid::Ulid
 ```
 
 The `Ulid` struct is a wrapper around a `u128`, with a few extra methods.
 
 ```rust
-let id = ulid_lite::Ulid::new();
+let id = ulid::Ulid::new();
 
 // Ulid structs can be converted to strings..
 let _: String = id.to_string();
