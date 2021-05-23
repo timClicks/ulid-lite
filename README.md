@@ -82,6 +82,48 @@ let b = ulid();
 assert!(a < b);
 ```
 
+### From C
+
+An (experimental) C API is available at `lib/ulid.h`.
+
+Here is a minimal application that generates and prints a ULID:
+
+```c
+#include <stdio.h>
+#include "ulid.h"
+
+int main(void) {
+    char str[27] = {0};
+
+    ulid_ctx ctx = ulid_init(0);
+    ulid_new_string(&ctx, ((char *)str));
+
+    printf("%s\n", str);
+
+    return 0;
+}
+```
+
+`libulid` also provides access to creating binary (128 bit)
+ULIDs and converting those to strings:
+
+```c
+#include <stdio.h>
+#include "ulid.h"
+
+int main(void) {
+    uint8_t bin[16] = {0};
+    char str[27] = {0};
+
+    ulid_ctx ctx = ulid_init(0);
+
+    ulid_new(&ctx, &bin);
+    ulid_encode(&bin, ((char *)str));
+
+    printf("%s\n", str);
+    return 0;
+}
+```
 
 
 ## Installation
