@@ -162,8 +162,8 @@ pub fn ulid_raw() -> u128 {
 //#[cfg(ffi)]
 mod ffi {
     use super::*;
-    use std::os::raw::c_char;
     use std::slice::from_raw_parts_mut;
+    use ::libc::{ERANGE, c_char, c_int, size_t};
 
     #[allow(non_camel_case_types)]
     pub type ulid_t = [u8; 16];
@@ -217,13 +217,12 @@ mod ffi {
     //     seed(s);
     // }
 
-    /// Write a new 128-bit ULID in `dest`.
+    /// Create a new 128-bit ULID in `dest`.
     ///
-    /// If `ctx` pointer is null, the random number generator is re-seeded from
-    /// the system's clock.
+    /// If the `ctx` pointer is null, the random number generator is re-seeded
+    /// from the system's clock.
     ///
-    /// The destination pointer `dest` must be a valid, non-null, pointer to
-    /// `ulid_t`.
+    /// The destination `dest` must be a valid, non-null, pointer to `ulid_t`.
     #[no_mangle]
     pub unsafe extern "C" fn ulid_new(ctx: *mut ulid_ctx, dest: &mut ulid_t) {
         ulid_ctx::ensure_init(ctx);
@@ -232,35 +231,64 @@ mod ffi {
         *dest = std::mem::transmute(id);
     }
 
-    /// Write a new ULID in `dest` using Crockford's Base32 alphabet.
+    /// Write a new ULID to `dest` as a string.
     ///
-    /// If `ctx` pointer is null, the random number generator is re-seeded from
-    /// the system's clock.
+    /// Crockford's Base32 alphabet is used, and exactly 27 bytes are written,
+    /// including the terminating null byte.
     ///
-    /// The destination pointer `dest` must be a valid, non-null, pointer to
-    /// `char` buffer with at least length 26.
+    /// The destination `dest` must be a valid, non-null, pointer to a `char`
+    /// buffer with `size` bytes, and should have at least 27 bytes.
     ///
-    /// No terminating null byte is written to the buffer.
+    /// If the `ctx` pointer is null, the random number generator is re-seeded
+    /// from the system's clock.
+    ///
+    /// Returns the number of characters printed (excluding the terminating null
+    /// byte) on success, or a negative error code on failure.
     #[no_mangle]
-    pub unsafe extern "C" fn ulid_new_string(ctx: *mut ulid_ctx, dest: *mut c_char) {
+    pub unsafe extern "C" fn ulid_write_new(
+        ctx: *mut ulid_ctx,
+        dest: *mut c_char,
+        size: size_t
+    ) -> c_int {
+        if size < ULID_LEN + 1 {
+            return -ERANGE;
+        }
+
         ulid_ctx::ensure_init(ctx);
 
         let id = Ulid::new();
-        let slice = from_raw_parts_mut(dest, ULID_LEN);
-        base32::encode(id.bits, std::mem::transmute(slice));
+        let slice = from_raw_parts_mut(dest as *mut u8, size);
+        base32::encode(id.bits, slice);
+        slice[ULID_LEN] = 0;
+
+        ULID_LEN as c_int // cast is safe because ULID_LEN is tiny
     }
 
-    /// Encode the 128-bit ULID pointed by `id` as a string in `dest`.
+    /// Write the 128-bit ULID pointed by `id` to `dest` as a string.
     ///
-    /// The destination pointer `dest` must be a valid, non-null, pointer to
-    /// `char` buffer with at least length 26.
+    /// Crockford's Base32 alphabet is used, and exactly 27 bytes are written,
+    /// including the terminating null byte.
     ///
-    /// The Crockford's Base32 alphabet is used.  No terminating null byte is
-    /// written to the buffer.
+    /// The destination `dest` must be a valid, non-null, pointer to a `char`
+    /// buffer with `size` bytes, and should have at least 27 bytes.
+    ///
+    /// Returns the number of characters printed (excluding the terminating null
+    /// byte) on success, or a negative error code on failure.
     #[no_mangle]
-    pub unsafe extern "C" fn ulid_encode(id: &ulid_t, dest: *mut c_char) {
-        let slice = from_raw_parts_mut(dest, ULID_LEN);
-        base32::encode(std::mem::transmute(*id), std::mem::transmute(slice));
+    pub unsafe extern "C" fn ulid_write(
+        id: &ulid_t,
+        dest: *mut c_char,
+        size: size_t
+    ) -> c_int {
+        if size < ULID_LEN + 1 {
+            return -ERANGE;
+        }
+
+        let slice = from_raw_parts_mut(dest as *mut u8, size);
+        base32::encode(std::mem::transmute(*id), slice);
+        slice[ULID_LEN] = 0;
+
+        ULID_LEN as c_int // cast is safe because ULID_LEN is tiny
     }
 }
 
@@ -317,12 +345,26 @@ mod that {
 
         #[test]
         fn can_create_new_ulid_as_base32() {
-            let mut dest = [0u8; ULID_LEN + 1];
+            let mut dest = [0u8; 64];
+            let dest_ptr = dest.as_mut_ptr() as *mut c_char;
+            let null_ptr = std::ptr::null_mut();
 
-            unsafe { ffi::ulid_new_string(std::ptr::null_mut(), dest.as_mut_ptr() as *mut c_char) };
+            let ret = unsafe { ffi::ulid_write_new(null_ptr, dest_ptr, dest.len()) };
+            assert_eq!(ret, 26);
 
-            let reconst = CStr::from_bytes_with_nul(&dest).unwrap().to_str().unwrap();
+            let reconst = unsafe { CStr::from_ptr(dest_ptr) }.to_str().unwrap();
             assert_eq!(reconst.len(), 26);
+        }
+
+        #[test]
+        fn creating_new_ulid_as_base32_doesnt_overflow() {
+            let mut dest = [0u8; ULID_LEN]; // one byte too small
+            let dest_ptr = dest.as_mut_ptr() as *mut c_char;
+            let null_ptr = std::ptr::null_mut();
+
+            let ret = unsafe { ffi::ulid_write_new(null_ptr, dest_ptr, dest.len()) };
+            assert_eq!(ret, -libc::ERANGE);
+            assert_eq!(dest[0], 0); // nothing written to dest
         }
 
         #[test]
@@ -330,11 +372,27 @@ mod that {
             let mut id = [0u8; 16];
             unsafe { ffi::ulid_new(std::ptr::null_mut(), &mut id) };
 
-            let mut dest = [0u8; ULID_LEN + 1];
-            unsafe { ffi::ulid_encode(&id, dest.as_mut_ptr() as *mut c_char) };
+            let mut dest = [0u8; 64];
+            let dest_ptr = dest.as_mut_ptr() as *mut c_char;
 
-            let reconst = CStr::from_bytes_with_nul(&dest).unwrap().to_str().unwrap();
+            let ret = unsafe { ffi::ulid_write(&id, dest_ptr, dest.len()) };
+            assert_eq!(ret, 26);
+
+            let reconst = unsafe { CStr::from_ptr(dest_ptr) }.to_str().unwrap();
             assert_eq!(reconst.len(), 26);
+        }
+
+        #[test]
+        fn encoding_binary_ulid_as_base32_doesnt_overflow() {
+            let mut id = [0u8; 16];
+            unsafe { ffi::ulid_new(std::ptr::null_mut(), &mut id) };
+
+            let mut dest = [0u8; ULID_LEN]; // one byte too small
+            let dest_ptr = dest.as_mut_ptr() as *mut c_char;
+
+            let ret = unsafe { ffi::ulid_write(&id, dest_ptr, dest.len()) };
+            assert_eq!(ret, -libc::ERANGE);
+            assert_eq!(dest[0], 0); // nothing written to dest
         }
     }
 }
@@ -344,7 +402,7 @@ mod that {
 /// Note: MIRIFLAGS="-Zmiri-disable-isolation" is needed for `SystemTime::now()`.
 #[cfg(miri)]
 mod libc_shim {
-    pub use libc::{c_int, c_uint, time_t};
+    pub use libc::{c_int, c_uint, time_t, size_t, ERANGE};
 
     pub unsafe fn rand() -> c_int {
         42
