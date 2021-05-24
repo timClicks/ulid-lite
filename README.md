@@ -93,10 +93,10 @@ Here is a minimal application that generates and prints a ULID:
 #include "ulid.h"
 
 int main(void) {
-    char str[27] = {0};
+    char str[27];
 
     ulid_ctx ctx = ulid_init(0);
-    ulid_new_string(&ctx, ((char *)str));
+    ulid_write_new(&ctx, str, sizeof(str));
 
     printf("%s\n", str);
 
@@ -105,22 +105,39 @@ int main(void) {
 ```
 
 `libulid` also provides access to creating binary (128 bit)
-ULIDs and converting those to strings:
+ULIDs and converting those to strings (this example is
+intentionally convoluted to showcase error handling):
 
 ```c
 #include <stdio.h>
 #include "ulid.h"
 
 int main(void) {
-    uint8_t bin[16] = {0};
-    char str[27] = {0};
+    ulid_ctx ctx;
+    ulid_t id;
+    char buf[64], *cur = buf;
+    int n, size = sizeof(buf);
 
-    ulid_ctx ctx = ulid_init(0);
+    ctx = ulid_init(0);
+    ulid_new(&ctx, &id);
 
-    ulid_new(&ctx, &bin);
-    ulid_encode(&bin, ((char *)str));
+    n = snprintf(cur, size, "Your ULID is ");
+    if (n >= size)
+        return 1;
+    cur += n;
+    size -= n;
 
-    printf("%s\n", str);
+    n = ulid_write(&id, cur, size);
+    if (n < 0) /* failed, typically buffer is too small */
+        return 1;
+    cur += n;
+    size -= n;
+
+    n = snprintf(cur, size, ".");
+    if (n >= size)
+        return 1;
+
+    printf("%s\n", buf);
     return 0;
 }
 ```
