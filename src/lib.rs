@@ -1,6 +1,11 @@
 use core::fmt::{Display, Formatter, LowerHex, Result, UpperHex};
 use std::time::SystemTime;
 
+#[cfg(not(miri))]
+use libc;
+#[cfg(miri)]
+use libc_shim as libc;
+
 const ULID_LEN: usize = 26;
 mod base32 {
     use super::ULID_LEN;
@@ -338,11 +343,8 @@ mod that {
 ///
 /// Note: MIRIFLAGS="-Zmiri-disable-isolation" is needed for `SystemTime::now()`.
 #[cfg(miri)]
-mod libc {
-    use std::os::raw::{c_int, c_uint};
-
-    #[allow(non_camel_case_types)]
-    type time_t = i64;
+mod libc_shim {
+    pub use libc::{c_int, c_uint, time_t};
 
     pub unsafe fn rand() -> c_int {
         42
