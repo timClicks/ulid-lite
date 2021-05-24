@@ -1,7 +1,5 @@
-use ulid::{init, ulid};
+use ulid::{UlidGenerator};
 
 fn main() {
-    let _seed = init();
-
-    println!("{}", ulid());
+    println!("{}", UlidGenerator::new().ulid());
 }

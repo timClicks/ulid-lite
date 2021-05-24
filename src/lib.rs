@@ -1,5 +1,7 @@
 use core::fmt::{Display, Formatter, LowerHex, Result, UpperHex};
-use std::time::SystemTime;
+use std::time::{SystemTime, Duration};
+
+use xorshift::{Rand, Rng, SeedableRng, SplitMix64, Xoroshiro128};
 
 const ULID_LEN: usize = 26;
 mod base32 {
@@ -54,15 +56,21 @@ mod base32 {
     }
 }
 
+///
+#[inline]
+fn duration_since_epoch() -> Duration {
+    let now = SystemTime::now();
+
+    now
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("system clock is set to before UNIX epoch")
+}
+
 #[inline]
 fn time_bits() -> u128 {
     // TODO: add OS-specific implementations that are quicker
-    let now = SystemTime::now();
 
-    let t = now
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .expect("system clock is set to before UNIX epoch");
-
+    let t = duration_since_epoch();
     t.as_millis() & (1 << 48) - 1
 }
 
@@ -122,36 +130,81 @@ impl UpperHex for Ulid {
     }
 }
 
-/// Sets the seed of the internal random number generator.
-///
-/// This function is provided so that you can retain
-/// full control. Most applications will prefer to
-/// call `init()`.
-pub fn seed(s: u32) {
-    // Safety: safe because no memory is being passed to libc
-    unsafe {
-        libc::srand(s);
+pub struct UlidGenerator {
+    rng: Xoroshiro128,
+}
+
+impl UlidGenerator {
+    pub fn new() -> Self {
+        let seed = (duration_since_epoch().as_nanos() & u64::MAX as u128) as u64;
+        Self::from_seed(seed)
+    }
+
+    pub fn from_seed(seed: u64) -> Self {
+        // Use a SplitMix64 PRNG to seed a Xoroshiro128+ PRNG
+        let mut sm: SplitMix64 = SeedableRng::from_seed(seed);
+        let rng: Xoroshiro128 = Rand::rand(&mut sm);
+
+        UlidGenerator {
+            rng,
+        }
+    }
+
+    pub fn ulid(&mut self) -> Ulid {
+        Ulid {
+            bits: self.time_bits() << 80 | self.rand_bits()
+        }
+    }
+
+    #[inline]
+    fn time_bits(&self) -> u128 {
+        // TODO: add OS-specific implementations that are quicker
+
+        let t = duration_since_epoch();
+        t.as_millis() & (1 << 48) - 1
+    }
+
+    #[inline]
+    fn rand_bits(&mut self) -> u128 {
+        let a = self.rng.next_u64() as u128;
+        let b = self.rng.next_u64() as u128;
+
+        let mut bits  = a << 64 | b;
+        bits &= (1 << 80) - 1; // 0xfff...
+        bits
     }
 }
 
-/// Initialize the internal random number generator
-/// based on the system's clock.
-pub fn init() -> u32 {
-    const SAFE_BITS:i64 = u32::MAX as i64;
-    // Safety: safe because no memory is being passed to libc
-    unsafe {
-        let now = libc::time(0 as *mut _) & SAFE_BITS;
-        seed(now as u32);
-        now as u32
-    }
-}
+// /// Sets the seed of the internal random number generator.
+// ///
+// /// This function is provided so that you can retain
+// /// full control. Most applications will prefer to
+// /// call `init()`.
+// pub fn seed(s: u32) {
+//     // Safety: safe because no memory is being passed to libc
+//     unsafe {
+//         libc::srand(s);
+//     }
+// }
+//
+// /// Initialize the internal random number generator
+// /// based on the system's clock.
+// pub fn init() -> u32 {
+//     const SAFE_BITS:i64 = u32::MAX as i64;
+//     // Safety: safe because no memory is being passed to libc
+//     unsafe {
+//         let now = libc::time(0 as *mut _) & SAFE_BITS;
+//         seed(now as u32);
+//         now as u32
+//     }
+// }
 
 pub fn ulid() -> String {
-    Ulid::new().to_string()
+    UlidGenerator::new().ulid().to_string()
 }
 
 pub fn ulid_raw() -> u128 {
-    Ulid::new().bits
+    ulid().bits
 }
 
 //#[cfg(ffi)]
