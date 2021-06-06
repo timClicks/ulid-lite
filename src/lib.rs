@@ -166,9 +166,9 @@ mod ffi {
     use ::libc::{ERANGE, c_char, c_int, size_t};
 
     #[allow(non_camel_case_types)]
-    pub type ulid_t = [u8; 16];
+    pub type ulid = [u8; 16];
 
-    impl From<Ulid> for ulid_t {
+    impl From<Ulid> for ulid {
         #[inline]
         fn from(id: Ulid) -> Self {
             unsafe {
@@ -222,12 +222,12 @@ mod ffi {
     /// If the `ctx` pointer is null, the random number generator is re-seeded
     /// from the system's clock.
     ///
-    /// The destination `dest` must be a valid, non-null, pointer to `ulid_t`.
+    /// The destination `dest` must be a valid, non-null, pointer to `ulid`.
     #[no_mangle]
-    pub unsafe extern "C" fn ulid_new(ctx: *mut ulid_ctx, dest: &mut ulid_t) {
+    pub unsafe extern "C" fn ulid_new(ctx: *mut ulid_ctx, dest: &mut ulid) {
         ulid_ctx::ensure_init(ctx);
 
-        let id: ulid_t = Ulid::new().into();
+        let id: ulid = Ulid::new().into();
         *dest = std::mem::transmute(id);
     }
 
@@ -276,7 +276,7 @@ mod ffi {
     /// byte) on success, or a negative error code on failure.
     #[no_mangle]
     pub unsafe extern "C" fn ulid_write(
-        id: &ulid_t,
+        id: &ulid,
         dest: *mut c_char,
         size: size_t
     ) -> c_int {

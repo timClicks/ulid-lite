@@ -7,7 +7,7 @@ typedef struct ulid_ctx {
   uint32_t seed;
 } ulid_ctx;
 
-typedef uint8_t ulid_t[16];
+typedef uint8_t ulid[16];
 
 /**
  * Generate a `ulid_ctx` and seed the random number generator (RNG)
@@ -24,9 +24,9 @@ struct ulid_ctx ulid_init(uint32_t seed);
  * If the `ctx` pointer is null, the random number generator is re-seeded
  * from the system's clock.
  *
- * The destination `dest` must be a valid, non-null, pointer to `ulid_t`.
+ * The destination `dest` must be a valid, non-null, pointer to `ulid`.
  */
-void ulid_new(struct ulid_ctx *ctx, ulid_t *dest);
+void ulid_new(struct ulid_ctx *ctx, ulid *dest);
 
 /**
  * Write a new ULID to `dest` as a string.
@@ -57,4 +57,4 @@ int ulid_write_new(struct ulid_ctx *ctx, char *dest, size_t size);
  * Returns the number of characters printed (excluding the terminating null
  * byte) on success, or a negative error code on failure.
  */
-int ulid_write(const ulid_t *id, char *dest, size_t size);
+int ulid_write(const ulid *id, char *dest, size_t size);
