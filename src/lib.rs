@@ -142,7 +142,7 @@ pub fn seed(s: u32) {
 /// Initialize the internal random number generator
 /// based on the system's clock.
 pub fn init() -> u32 {
-    const SAFE_BITS:i64 = u32::MAX as i64;
+    const SAFE_BITS: i64 = u32::MAX as i64;
     // Safety: safe because no memory is being passed to libc
     unsafe {
         let now = libc::time(0 as *mut _) & SAFE_BITS;
@@ -162,8 +162,8 @@ pub fn ulid_raw() -> u128 {
 //#[cfg(ffi)]
 mod ffi {
     use super::*;
+    use ::libc::{c_char, c_int, size_t, ERANGE};
     use std::slice::from_raw_parts_mut;
-    use ::libc::{ERANGE, c_char, c_int, size_t};
 
     #[allow(non_camel_case_types)]
     pub type ulid = [u8; 16];
@@ -171,16 +171,17 @@ mod ffi {
     impl From<Ulid> for ulid {
         #[inline]
         fn from(id: Ulid) -> Self {
-            unsafe {
-                std::mem::transmute(id.bits)
-            }
+            unsafe { std::mem::transmute(id.bits) }
         }
     }
 
-    #[repr(C)]
+    /// Context object for `ulid` operations
+    ///
+    /// Contains information related to the internal RNG.
+    // #[repr(rust)] so that cbindgen generates an opaque struct
     #[allow(non_camel_case_types)]
     pub struct ulid_ctx {
-        seed: u32,
+        pub(crate) seed: u32,
     }
 
     impl ulid_ctx {
@@ -189,7 +190,7 @@ mod ffi {
             if ctx.is_null() {
                 ulid_init(0);
             } else if (*ctx).seed == 0 {
-                (*ctx).seed = ulid_init(0).seed;
+                (*ctx).seed = (*ulid_init(0)).seed;
             }
         }
     }
@@ -200,15 +201,16 @@ mod ffi {
     /// Passing 0 as `seed` will seed the random number generator from the
     /// system's clock.
     #[no_mangle]
-    pub extern "C" fn ulid_init(seed: u32) -> ulid_ctx {
+    pub extern "C" fn ulid_init(seed: u32) -> *mut ulid_ctx {
         let s = match seed {
             0 => init(),
-            s => { super::seed(s); s},
+            s => {
+                super::seed(s);
+                s
+            }
         };
 
-        ulid_ctx {
-            seed: s,
-        }
+        &mut ulid_ctx { seed: s }
     }
 
     // /// Seed the random number generator with `s`
@@ -248,7 +250,7 @@ mod ffi {
     pub unsafe extern "C" fn ulid_write_new(
         ctx: *mut ulid_ctx,
         dest: *mut c_char,
-        size: size_t
+        size: size_t,
     ) -> c_int {
         if size < ULID_LEN + 1 {
             return -ERANGE;
@@ -275,11 +277,7 @@ mod ffi {
     /// Returns the number of characters printed (excluding the terminating null
     /// byte) on success, or a negative error code on failure.
     #[no_mangle]
-    pub unsafe extern "C" fn ulid_write(
-        id: &ulid,
-        dest: *mut c_char,
-        size: size_t
-    ) -> c_int {
+    pub unsafe extern "C" fn ulid_write(id: &ulid, dest: *mut c_char, size: size_t) -> c_int {
         if size < ULID_LEN + 1 {
             return -ERANGE;
         }
@@ -297,7 +295,7 @@ mod that {
     use super::*;
 
     #[test]
-    #[cfg_attr(miri, ignore)]  // too slow and unlikely to pass in Miri
+    #[cfg_attr(miri, ignore)] // too slow and unlikely to pass in Miri
     fn each_ulid_is_unique() {
         use itertools::Itertools;
 
@@ -327,11 +325,11 @@ mod that {
         #[test]
         fn can_init_ctx() {
             let ctx = ffi::ulid_init(42);
-            let as_u32: u32 = unsafe { std::mem::transmute(ctx) };
+            let as_u32: u32 = unsafe { std::mem::transmute(ctx.as_ref().unwrap().seed) };
             assert_eq!(as_u32, 42);
 
             let ctx = ffi::ulid_init(0);
-            let as_u32: u32 = unsafe { std::mem::transmute(ctx) };
+            let as_u32: u32 = unsafe { std::mem::transmute(ctx.as_ref().unwrap().seed) };
             assert_ne!(as_u32, 0);
         }
 
@@ -402,7 +400,7 @@ mod that {
 /// Note: MIRIFLAGS="-Zmiri-disable-isolation" is needed for `SystemTime::now()`.
 #[cfg(miri)]
 mod libc_shim {
-    pub use libc::{c_int, c_uint, time_t, size_t, ERANGE};
+    pub use libc::{c_int, c_uint, size_t, time_t, ERANGE};
 
     pub unsafe fn rand() -> c_int {
         42

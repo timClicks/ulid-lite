@@ -3,9 +3,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-typedef struct ulid_ctx {
-  uint32_t seed;
-} ulid_ctx;
+/**
+ * Context object for `ulid` operations
+ *
+ * Contains information related to the internal RNG.
+ */
+typedef struct ulid_ctx ulid_ctx;
 
 typedef uint8_t ulid[16];
 
@@ -16,7 +19,7 @@ typedef uint8_t ulid[16];
  * Passing 0 as `seed` will seed the random number generator from the
  * system's clock.
  */
-struct ulid_ctx ulid_init(uint32_t seed);
+struct ulid_ctx *ulid_init(uint32_t seed);
 
 /**
  * Create a new 128-bit ULID in `dest`.
