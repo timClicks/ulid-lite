@@ -6,7 +6,12 @@ use libc;
 #[cfg(miri)]
 use libc_shim as libc;
 
-const ULID_LEN: usize = 26;
+/// Number of bytes for the binary representation of a `ulid`
+pub const ULID_BINARY_LEN: usize = 16;
+
+/// Number of bytes for the ASCII text representation of a `ulid`
+pub const ULID_LEN: usize = 26;
+
 mod base32 {
     use super::ULID_LEN;
     use core::hint::unreachable_unchecked;
@@ -166,7 +171,7 @@ mod ffi {
     use std::slice::from_raw_parts_mut;
 
     #[allow(non_camel_case_types)]
-    pub type ulid = [u8; 16];
+    pub type ulid = [u8; ULID_BINARY_LEN];
 
     impl From<Ulid> for ulid {
         #[inline]
@@ -335,10 +340,10 @@ mod that {
 
         #[test]
         fn can_create_new_ulid() {
-            let mut dest = [0u8; 16];
+            let mut dest = [0u8; ULID_BINARY_LEN];
 
             unsafe { ffi::ulid_new(std::ptr::null_mut(), &mut dest) };
-            assert_ne!(dest, [0u8; 16]); // should be impossible after 1-1-1970
+            assert_ne!(dest, [0u8; ULID_BINARY_LEN]); // should be impossible after 1-1-1970
         }
 
         #[test]
@@ -367,7 +372,7 @@ mod that {
 
         #[test]
         fn can_encode_binary_ulid_as_base32() {
-            let mut id = [0u8; 16];
+            let mut id = [0u8; ULID_BINARY_LEN];
             unsafe { ffi::ulid_new(std::ptr::null_mut(), &mut id) };
 
             let mut dest = [0u8; 64];
@@ -382,7 +387,7 @@ mod that {
 
         #[test]
         fn encoding_binary_ulid_as_base32_doesnt_overflow() {
-            let mut id = [0u8; 16];
+            let mut id = [0u8; ULID_BINARY_LEN];
             unsafe { ffi::ulid_new(std::ptr::null_mut(), &mut id) };
 
             let mut dest = [0u8; ULID_LEN]; // one byte too small

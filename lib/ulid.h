@@ -4,13 +4,23 @@
 #include <stdlib.h>
 
 /**
+ * Number of bytes for the binary representation of a `ulid`
+ */
+#define ULID_BINARY_LEN 16
+
+/**
+ * Number of bytes for the ASCII text representation of a `ulid`
+ */
+#define ULID_LEN 26
+
+/**
  * Context object for `ulid` operations
  *
  * Contains information related to the internal RNG.
  */
 typedef struct ulid_ctx ulid_ctx;
 
-typedef uint8_t ulid[16];
+typedef uint8_t ulid[ULID_BINARY_LEN];
 
 /**
  * Generate a `ulid_ctx` and seed the random number generator (RNG)
