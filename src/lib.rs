@@ -318,6 +318,7 @@ mod that {
         use itertools::Itertools;
 
         let ulids: Vec<_> = (0..100).map(|_| ulid()).collect();
+        println!("{:?}", ulids);
         for pair in ulids.into_iter().permutations(2) {
             assert_ne!(pair[0], pair[1]);
         }
@@ -353,11 +354,15 @@ mod that {
 
         #[test]
         fn can_destroy_ctx() {
-            let ctx = ffi::ulid_init(42);
+            // rely on MIRI to detect leaks
+            let ctx = ffi::ulid_init(0);
             unsafe {
-                assert_ne!((*ctx).seed, 0);
+                let seed = (*ctx).seed;
+                assert_ne!(seed, 0);
                 ffi::ulid_ctx_destroy(ctx);
-                assert_eq!((*ctx).seed, 0);
+
+                // FIXME: is there a better way to check that memory has been freed?
+                assert_ne!(seed, (*ctx).seed);
             }
         }
 
