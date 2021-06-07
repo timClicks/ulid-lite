@@ -185,6 +185,7 @@ mod ffi {
     /// Contains information related to the internal RNG.
     // #[repr(rust)] so that cbindgen generates an opaque struct
     #[allow(non_camel_case_types)]
+    #[derive(Debug)]
     pub struct ulid_ctx {
         pub(crate) seed: u32,
     }
@@ -198,6 +199,17 @@ mod ffi {
                 (*ctx).seed = (*ulid_init(0)).seed;
             }
         }
+    }
+
+    /// Destroy the `ulid_ctx` object
+    ///
+    /// # Safety
+    ///
+    /// Must not be called on the same value twice. This results
+    /// in a double free.
+    #[no_mangle]
+    pub unsafe extern "C" fn ulid_ctx_destroy(ctx: *mut ulid_ctx) {
+        Box::from_raw(ctx);
     }
 
     /// Generate a `ulid_ctx` and seed the random number generator (RNG)
@@ -215,7 +227,8 @@ mod ffi {
             }
         };
 
-        &mut ulid_ctx { seed: s }
+        let ctx = ulid_ctx { seed: s };
+        Box::leak(Box::new(ctx))
     }
 
     // /// Seed the random number generator with `s`
@@ -336,6 +349,16 @@ mod that {
             let ctx = ffi::ulid_init(0);
             let as_u32: u32 = unsafe { std::mem::transmute(ctx.as_ref().unwrap().seed) };
             assert_ne!(as_u32, 0);
+        }
+
+        #[test]
+        fn can_destroy_ctx() {
+            let ctx = ffi::ulid_init(42);
+            unsafe {
+                assert_ne!((*ctx).seed, 0);
+                ffi::ulid_ctx_destroy(ctx);
+                assert_eq!((*ctx).seed, 0);
+            }
         }
 
         #[test]

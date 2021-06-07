@@ -23,6 +23,16 @@ typedef struct ulid_ctx ulid_ctx;
 typedef uint8_t ulid[ULID_BINARY_LEN];
 
 /**
+ * Destroy the `ulid_ctx` object
+ *
+ * # Safety
+ *
+ * Must not be called on the same value twice. This results
+ * in a double free.
+ */
+void ulid_ctx_destroy(struct ulid_ctx *ctx);
+
+/**
  * Generate a `ulid_ctx` and seed the random number generator (RNG)
  * provided by your system's libc implementation of the rand() family.
  *
