@@ -140,6 +140,42 @@ impl UpperHex for Ulid {
     }
 }
 
+
+/// Generates ULIDs, sortable yet unique identifiers.
+///
+/// The primary way to create a `UlidGenerator` is through `::new()`.
+/// This will seed the internal pseudo-random number generator (PRNG)
+/// with the current timestamp.
+///
+/// `UlidGenerator` implements [`std::iter::Iterator`], which allows you
+///  to create a continuous series of ULIDs.
+///
+/// They
+///
+/// ```rust
+/// use ulid::UlidGenerator;
+///
+/// let mut ulid_gen = UlidGenerator::new();
+/// let mut ulids: Vec<_> = ulid_gen.take(1000).collect();
+///
+/// let test = ulids.pop().unwrap();
+/// for ulid in ulids {
+///     assert_ne!(test, ulid);
+/// }
+/// ```
+///
+/// You can also use a fixed seed to create a repeatable sequence:
+///
+/// ```rust
+/// use ulid::UlidGenerator;
+///
+/// let ulid_gen = UlidGenerator::from_seed(12345);
+/// let ulids: Vec<_> = ulid_gen.take(5).collect();
+///
+/// // Only the low bits are affected, so we check slices near the end
+/// assert_eq!(&(ulids[0].to_string()[20..]), "RBPBCT");
+/// assert_eq!(&(ulids[4].to_string()[20..]), "BZBF00");
+/// ```
 pub struct UlidGenerator {
     rng: Xoroshiro128,
 }
@@ -185,6 +221,14 @@ impl UlidGenerator {
     }
 }
 
+impl Iterator for UlidGenerator {
+    type Item = Ulid;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(self.ulid())
+    }
+}
+
 // /// Sets the seed of the internal random number generator.
 // ///
 // /// This function is provided so that you can retain
@@ -209,6 +253,17 @@ impl UlidGenerator {
 //     }
 // }
 
+/// Create a unique ULID as a base32-encoded string
+///
+/// # Examples
+///
+/// ```rust
+/// use ulid::ulid;
+///
+/// let a = ulid();
+/// let b = ulid();
+/// assert_ne!(a, b);
+/// ```
 pub fn ulid() -> String {
     UlidGenerator::new().ulid().to_string()
 }
