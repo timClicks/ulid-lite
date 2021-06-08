@@ -3,11 +3,34 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-typedef struct ulid_ctx {
-  uint32_t seed;
-} ulid_ctx;
+/**
+ * Number of bytes for the binary representation of a `ulid`
+ */
+#define ULID_BINARY_LEN 16
 
-typedef uint8_t ulid_t[16];
+/**
+ * Number of bytes for the ASCII text representation of a `ulid`
+ */
+#define ULID_LEN 26
+
+/**
+ * Context object for `ulid` operations
+ *
+ * Contains information related to the internal RNG.
+ */
+typedef struct ulid_ctx ulid_ctx;
+
+typedef uint8_t ulid[ULID_BINARY_LEN];
+
+/**
+ * Destroy the `ulid_ctx` object
+ *
+ * # Safety
+ *
+ * Must not be called on the same value twice. This results
+ * in a double free.
+ */
+void ulid_ctx_destroy(struct ulid_ctx *ctx);
 
 /**
  * Generate a `ulid_ctx` and seed the random number generator (RNG)
@@ -16,39 +39,45 @@ typedef uint8_t ulid_t[16];
  * Passing 0 as `seed` will seed the random number generator from the
  * system's clock.
  */
-struct ulid_ctx ulid_init(uint32_t seed);
+struct ulid_ctx *ulid_init(uint32_t seed);
 
 /**
- * Write a new 128-bit ULID in `dest`.
+ * Create a new 128-bit ULID in `dest`.
  *
- * If `ctx` pointer is null, the random number generator is re-seeded from
- * the system's clock.
+ * If the `ctx` pointer is null, the random number generator is re-seeded
+ * from the system's clock.
  *
- * The destination pointer `dest` must be a valid, non-null, pointer to
- * `ulid_t`.
+ * The destination `dest` must be a valid, non-null, pointer to `ulid`.
  */
-void ulid_new(struct ulid_ctx *ctx, ulid_t *dest);
+void ulid_new(struct ulid_ctx *ctx, ulid *dest);
 
 /**
- * Write a new ULID in `dest` using Crockford's Base32 alphabet.
+ * Write a new ULID to `dest` as a string.
  *
- * If `ctx` pointer is null, the random number generator is re-seeded from
- * the system's clock.
+ * Crockford's Base32 alphabet is used, and exactly 27 bytes are written,
+ * including the terminating null byte.
  *
- * The destination pointer `dest` must be a valid, non-null, pointer to
- * `char` buffer with at least length 26.
+ * The destination `dest` must be a valid, non-null, pointer to a `char`
+ * buffer with `size` bytes, and should have at least 27 bytes.
  *
- * No terminating null byte is written to the buffer.
+ * If the `ctx` pointer is null, the random number generator is re-seeded
+ * from the system's clock.
+ *
+ * Returns the number of characters printed (excluding the terminating null
+ * byte) on success, or a negative error code on failure.
  */
-void ulid_new_string(struct ulid_ctx *ctx, char *dest);
+int ulid_write_new(struct ulid_ctx *ctx, char *dest, size_t size);
 
 /**
- * Encode the 128-bit ULID pointed by `id` as a string in `dest`.
+ * Write the 128-bit ULID pointed by `id` to `dest` as a string.
  *
- * The destination pointer `dest` must be a valid, non-null, pointer to
- * `char` buffer with at least length 26.
+ * Crockford's Base32 alphabet is used, and exactly 27 bytes are written,
+ * including the terminating null byte.
  *
- * The Crockford's Base32 alphabet is used.  No terminating null byte is
- * written to the buffer.
+ * The destination `dest` must be a valid, non-null, pointer to a `char`
+ * buffer with `size` bytes, and should have at least 27 bytes.
+ *
+ * Returns the number of characters printed (excluding the terminating null
+ * byte) on success, or a negative error code on failure.
  */
-void ulid_encode(const ulid_t *id, char *dest);
+int ulid_write(const ulid *id, char *dest, size_t size);

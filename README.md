@@ -93,10 +93,10 @@ Here is a minimal application that generates and prints a ULID:
 #include "ulid.h"
 
 int main(void) {
-    char str[27] = {0};
+    char str[27];
 
     ulid_ctx ctx = ulid_init(0);
-    ulid_new_string(&ctx, ((char *)str));
+    ulid_write_new(&ctx, str, sizeof(str));
 
     printf("%s\n", str);
 
@@ -105,22 +105,39 @@ int main(void) {
 ```
 
 `libulid` also provides access to creating binary (128 bit)
-ULIDs and converting those to strings:
+ULIDs and converting those to strings (this example is
+intentionally convoluted to showcase error handling):
 
 ```c
 #include <stdio.h>
 #include "ulid.h"
 
 int main(void) {
-    uint8_t bin[16] = {0};
-    char str[27] = {0};
+    ulid_ctx ctx;
+    ulid_t id;
+    char buf[64], *cur = buf;
+    int n, size = sizeof(buf);
 
-    ulid_ctx ctx = ulid_init(0);
+    ctx = ulid_init(0);
+    ulid_new(&ctx, &id);
 
-    ulid_new(&ctx, &bin);
-    ulid_encode(&bin, ((char *)str));
+    n = snprintf(cur, size, "Your ULID is ");
+    if (n >= size)
+        return 1;
+    cur += n;
+    size -= n;
 
-    printf("%s\n", str);
+    n = ulid_write(&id, cur, size);
+    if (n < 0) /* failed, typically buffer is too small */
+        return 1;
+    cur += n;
+    size -= n;
+
+    n = snprintf(cur, size, ".");
+    if (n >= size)
+        return 1;
+
+    printf("%s\n", buf);
     return 0;
 }
 ```
@@ -135,6 +152,45 @@ who can install it from source:
 $ cargo install --git https://github.com/timClicks/ulid-lite.git
 ```
 
+## Contributing
+
+You are very welcome to contribute to project, however you must abide by the [Rust Code of Conduct].
+
+[Rust Code of Conduct]: https://www.rust-lang.org/policies/code-of-conduct
+
+### Non-code contributions
+
+Your contribution is important! Please [submit an issue] with your suggested change.
+
+[submit an issue]: https://github.com/timClicks/ulid-lite/issues/new
+
+### Code contributions
+
+> Note: these instructions have only been tested on Ubuntu,
+> please submit corrections/improvements for other operating systems.
+
+#### Setting up a development environment
+
+To begin, you require the following tools:
+
+- A Rust installation that includes `rustc`, `rustup`, and `cargo`
+- `git`
+- `make`
+
+
+From the root of the project, run `setup-devenv` to install dependencies that are managed by `cargo` or `rustup`, such as [MIRI](https://github.com/rust-lang/miri):
+
+```console
+$ ./setup-devenv
+```
+
+#### Submitting changes
+
+`ulid-lite` follows the standard GitHub workflow for code changes.
+Please fork the project, push commits to that fork and submit a pull request (PR).
+
+Before submitting a PR, you should run `make test && make` from the project's root directory, rather than `cargo test`.
+This will ensure that the MIRI tests run correctly and that artifacts can all be built.
 
 
 

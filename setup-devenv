@@ -1,0 +1,6 @@
+#! /bin/sh
+
+rustup toolchain install nightly
+rustup +nightly component add miri
+cargo +nightly install cargo-miri
+cargo install cbindgen
