@@ -33,21 +33,19 @@ $ ulid
 Here is a minimal application that uses this crate:
 
 ```rust
-use ulid::{init, ulid};
+use ulid::ulid;
 
 fn main() {
-    init();
-
     println!("{}", ulid());
 }
 ```
 
-To correctly use this crate, you need to ensure that `ulid::init()` has been called. This seeds the (pseudo-)random number generator provided by your system's `libc::rand` library.
-
 The primary API is the `ulid()` function, which returns a `String`.
+If you would like access to the individual bits, then call `ulid_raw()`. 
 
 ```rust
 ulid::ulid() -> String
+ulid::ulid_raw() -> u128
 ```
 
 For more control, the `ulid::Ulid` type is also available.
@@ -61,10 +59,7 @@ The `Ulid` struct is a wrapper around a `u128`, with a few extra methods.
 ```rust
 let id = ulid::Ulid::new();
 
-// Ulid structs can be converted to strings..
-let _: String = id.to_string();
-
-// They implmement Display, LowerHex and UpperHex
+// They implement Display, LowerHex and UpperHex
 println!("{}", id);
 println!("{:x}", id);
 println!("{:X}", id);
@@ -80,6 +75,21 @@ let a = ulid();
 sleep(Duration::from_millis(1));
 let b = ulid();
 assert!(a < b);
+```
+
+To generate many `ulid::Ulid` values, you're recommended to use `UlidGenerator`.
+It provides the ability to seed the internal pseudo-random number generator.
+
+```rust
+// use the system's clock as the initial seed...
+let mut ulid_gen = ulid::UlidGenerator::new();
+let ulids: Vec<_> = ulid_gen.take(1000).collect();
+```
+
+```rust
+// ...or use a fixed initial seed
+let mut ulid_gen = ulid::UlidGenerator::from_seed(12345);
+let ulid = ulid_gen.ulid();
 ```
 
 ### From C
@@ -214,8 +224,7 @@ A few important features are not yet implemented.
 ## Why add another crate?
 
 I wanted to implement a crate with a minimalist feel. It is intended to be easy and fast to build.
-ulid-lite has minimal dependencies: its only external dependency is `libc`. 
-This keeps build times fast and binary size small.
+`ulid-lite` has minimal dependencies. This keeps build times fast and binary size small.
 
 `ulid` does not take a long time to compile:
 
@@ -223,8 +232,23 @@ This keeps build times fast and binary size small.
 $ cargo clean
 $ cargo build --release
    Compiling libc v0.2.94
-   Compiling ulid v0.1.0 (/.../ulid)
-    Finished release [optimized] target(s) in 1.44s
+   Compiling lazy_static v0.2.11
+   Compiling rand v0.4.6
+   Compiling rand v0.3.23
+   Compiling xorshift v0.1.3
+   Compiling ulid-lite v0.4.0 (/.../ulid-lite)
+    Finished release [optimized] target(s) in 5.68s
+```
+
+Perhaps more importantly however, `ulid-lite` is very fast.
+A single CPU core can generate about 35,700 ULIDs per millisecond. 
+
+```console
+$ cargo bench
+...
+running 2 tests
+test benchmark_generation ... bench:          28 ns/iter (+/- 2)
+test benchmark_serialized ... bench:          71 ns/iter (+/- 12)
 ```
 
 ## Acknowledgements
