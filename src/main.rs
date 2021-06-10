@@ -1,5 +1,5 @@
-use ulid::{Ulid};
+use ulid::ulid;
 
 fn main() {
-    println!("{}", Ulid::new());
+    println!("{}", ulid());
 }
