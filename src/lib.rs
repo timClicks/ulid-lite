@@ -3,8 +3,6 @@ use std::time::{SystemTime, Duration};
 
 use xorshift::{Rand, Rng, SeedableRng, SplitMix64, Xoroshiro128};
 
-#[cfg(not(miri))]
-use libc;
 #[cfg(miri)]
 use libc_shim as libc;
 
@@ -66,7 +64,6 @@ mod base32 {
     }
 }
 
-///
 #[inline]
 fn duration_since_epoch() -> Duration {
     let now = SystemTime::now();
@@ -74,28 +71,6 @@ fn duration_since_epoch() -> Duration {
     now
         .duration_since(SystemTime::UNIX_EPOCH)
         .expect("system clock is set to before UNIX epoch")
-}
-
-#[inline]
-fn time_bits() -> u128 {
-    // TODO: add OS-specific implementations that are quicker
-
-    let t = duration_since_epoch();
-    t.as_millis() & (1 << 48) - 1
-}
-
-#[inline]
-fn rand_bits() -> u128 {
-    let mut bits: u128 = 0;
-
-    // Safety: safe because libc
-    let (a, b, c) = unsafe { (libc::rand(), libc::rand(), libc::rand()) };
-
-    bits |= (a as u128) << 64;
-    bits |= (b as u128) << 32;
-    bits |= c as u128;
-    bits &= (1 << 80) - 1; // 0xfff...
-    bits
 }
 
 #[repr(C)]
@@ -107,9 +82,7 @@ pub struct Ulid {
 impl Ulid {
     #[inline]
     pub fn new() -> Self {
-        Ulid {
-            bits: time_bits() << 80 | rand_bits(),
-        }
+        UlidGenerator::new().ulid()
     }
 
     pub fn new_nil() -> Self {
@@ -181,11 +154,14 @@ pub struct UlidGenerator {
 }
 
 impl UlidGenerator {
+
+    #[inline]
     pub fn new() -> Self {
         let seed = (duration_since_epoch().as_nanos() & u64::MAX as u128) as u64;
         Self::from_seed(seed)
     }
 
+    #[inline]
     pub fn from_seed(seed: u64) -> Self {
         // Use a SplitMix64 PRNG to seed a Xoroshiro128+ PRNG
         let mut sm: SplitMix64 = SeedableRng::from_seed(seed);
@@ -196,6 +172,7 @@ impl UlidGenerator {
         }
     }
 
+    #[inline]
     pub fn ulid(&mut self) -> Ulid {
         Ulid {
             bits: self.time_bits() << 80 | self.rand_bits()
