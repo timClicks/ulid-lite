@@ -22,13 +22,13 @@ bench:
 clean:
 	cargo clean
 
-target/release/ulid: src/lib.rs src/main.rs
+target/release/ulid: src/lib.rs src/main.rs Cargo.toml Cargo.lock
 	cargo build --release --bin ulid
 
-target/release/libulid.rlib: src/lib.rs
+target/release/libulid.rlib: src/lib.rs Cargo.toml Cargo.lock
 	cargo build --release --lib
 
-target/release/libulid.so: src/lib.rs
+target/release/libulid.so: src/lib.rs Cargo.toml Cargo.lock
 	cargo build --features=ffi --release --lib
 
 lib/ulid.h: src/lib.rs cbindgen.toml
