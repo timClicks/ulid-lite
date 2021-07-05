@@ -150,20 +150,30 @@ int main(void) {
 }
 ```
 
-#### Building the C interface
+
+## Installation
+
+Add `ulid-lite` to your crate's Cargo.toml file:
+
+```toml
+[dependencies]
+ulid-lite = "0.6.1"
+```
+
+### Building from source
+
+You can download and install `ulid-lite` directly from the main branch of the upstream repository: 
+
+```console
+$ cargo install --git https://github.com/timClicks/ulid-lite.git
+```
+
+### Building the C interface
 
 To regenerate the `ulid.h` header file, run `make lib/ulid.h`.
 
 To build the `libulid` shared library, run `make target/release/libulid.so`.
 
-## Installation
-
-At this early stage, this implementation is only available to people
-who can install it from source:
-
-```console
-$ cargo install --git https://github.com/timClicks/ulid-lite.git
-```
 
 ## Contributing
 
