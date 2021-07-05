@@ -94,9 +94,7 @@ let ulid = ulid_gen.ulid();
 
 ### From C
 
-An (experimental) C API is available at `lib/ulid.h`.
-
-Here is a minimal application that generates and prints a ULID:
+A C API is available at `lib/ulid.h`.  Here is a minimal application that generates and prints a ULID:
 
 ```c
 #include <stdio.h>
@@ -152,6 +150,11 @@ int main(void) {
 }
 ```
 
+#### Building the C interface
+
+To regenerate the `ulid.h` header file, run `make lib/ulid.h`.
+
+To build the `libulid` shared library, run `make target/release/libulid.so`.
 
 ## Installation
 
@@ -164,7 +167,7 @@ $ cargo install --git https://github.com/timClicks/ulid-lite.git
 
 ## Contributing
 
-You are very welcome to contribute to project, however you must abide by the [Rust Code of Conduct].
+You are very welcome to contribute to project in any form, however you must abide by the [Rust Code of Conduct].
 
 [Rust Code of Conduct]: https://www.rust-lang.org/policies/code-of-conduct
 
@@ -211,14 +214,15 @@ This will ensure that the MIRI tests run correctly and that artifacts can all be
 I would like to use this crate to develop pg_ulid extension.
 
 
-## Warning: Work in progress
-
-A few important features are not yet implemented.
+### More features
 
 - parsing pre-existing ULIDs 
 - monotonicity within the same millisecond
 - overflow checks
-- no_std: at the moment, this crate uses the `std::time` module to access the clock in a cross-portable manner. Over time, I would like make syscalls directly.
+
+### More platforms
+
+`ulid-lite` is currently only built for Linux. Patches are welcome to support more platforms.
 
 
 ## Why add another crate?

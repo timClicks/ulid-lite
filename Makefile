@@ -26,7 +26,7 @@ target/release/ulid: src/lib.rs src/main.rs
 	cargo build --release --bin ulid
 
 target/release/libulid.rlib: src/lib.rs
-	cargo build --features=ffi --release --lib
+	cargo build --release --lib
 
 target/release/libulid.so: src/lib.rs
 	cargo build --features=ffi --release --lib

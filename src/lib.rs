@@ -225,7 +225,7 @@ pub fn ulid_raw() -> u128 {
     UlidGenerator::new().ulid().bits
 }
 
-//#[cfg(ffi)]
+#[cfg(ffi)]
 mod ffi {
     use super::*;
     use ::libc::{c_char, c_int, size_t, ERANGE};
@@ -395,7 +395,7 @@ mod that {
         assert!(a < b);
     }
 
-    //#[cfg(ffi)]
+    #[cfg(ffi)]
     mod ffi {
         use std::{ffi::CStr, os::raw::c_char};
 
