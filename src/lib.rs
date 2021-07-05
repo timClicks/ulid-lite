@@ -206,30 +206,6 @@ impl Iterator for UlidGenerator {
     }
 }
 
-// /// Sets the seed of the internal random number generator.
-// ///
-// /// This function is provided so that you can retain
-// /// full control. Most applications will prefer to
-// /// call `init()`.
-// pub fn seed(s: u32) {
-//     // Safety: safe because no memory is being passed to libc
-//     unsafe {
-//         libc::srand(s);
-//     }
-// }
-//
-// /// Initialize the internal random number generator
-// /// based on the system's clock.
-// pub fn init() -> u32 {
-//     const SAFE_BITS:i64 = u32::MAX as i64;
-//     // Safety: safe because no memory is being passed to libc
-//     unsafe {
-//         let now = libc::time(0 as *mut _) & SAFE_BITS;
-//         seed(now as u32);
-//         now as u32
-//     }
-// }
-
 /// Create a unique ULID as a base32-encoded string
 ///
 /// # Examples
@@ -500,20 +476,3 @@ mod that {
     }
 }
 
-/// Mock some libc functions for the tests to run on Miri
-///
-/// Note: MIRIFLAGS="-Zmiri-disable-isolation" is needed for `SystemTime::now()`.
-#[cfg(miri)]
-mod libc_shim {
-    pub use libc::{c_int, c_uint, size_t, time_t, ERANGE};
-
-    pub unsafe fn rand() -> c_int {
-        42
-    }
-
-    pub unsafe fn srand(_: c_uint) {}
-
-    pub unsafe fn time(_: *mut time_t) -> time_t {
-        42
-    }
-}
